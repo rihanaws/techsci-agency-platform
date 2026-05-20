@@ -4,15 +4,15 @@ This document describes the administrative interface, the Notion database integr
 
 ---
 
-## 🔑 Passwordless Auth & Middleware Guard
+## 🔑 Passwordless Auth & Proxy Guard
 
-The `/admin` routes are protected against unauthorized access using **NextAuth v5 (Beta)** with a **Resend Magic Link** provider and an edge middleware check.
+The `/admin` routes are protected against unauthorized access using **NextAuth v5 (Beta)** with a **Resend Magic Link** provider and a proxy guard check.
 
 - **Authentication Config**: Configured in [auth.ts](file:///Users/rihan/all-coding-project/techsci-agency-platform/auth.ts) and [app/api/auth/\[...nextauth\]/route.ts](file:///Users/rihan/all-coding-project/techsci-agency-platform/app/api/auth/%5B...nextauth%5D/route.ts).
-- **Middleware Guard**: Located in [middleware.ts](file:///Users/rihan/all-coding-project/techsci-agency-platform/middleware.ts).
+- **Proxy Guard**: Located in [proxy.ts](file:///Users/rihan/all-coding-project/techsci-agency-platform/proxy.ts).
 
 ### Edge Route Rules
-1. Any incoming request targeting paths starting with `/admin` (excluding `/admin/login`) is checked by NextAuth middleware.
+1. Any incoming request targeting paths starting with `/admin` (excluding `/admin/login`) is checked by NextAuth proxy.
 2. If no valid session exists, the request is redirected to `/admin/login`.
 3. The login page triggers NextAuth to send a secure magic link email using the configured Resend SMTP host.
 4. Clicking the magic link logs the administrator in and redirects them back to `/admin`.
