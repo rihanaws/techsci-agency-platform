@@ -18,6 +18,7 @@ export interface OrderRecord {
 }
 
 export async function logOrder(order: OrderRecord): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const notion = getNotionClient() as any
   const dbId = process.env.NOTION_ORDERS_DB_ID
   if (!dbId) {
@@ -48,6 +49,7 @@ export async function updateOrderStatus(
   eventId: string,
   status: OrderStatus,
 ): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const notion = getNotionClient() as any
   const dbId = process.env.NOTION_ORDERS_DB_ID
   if (!dbId) return
@@ -92,6 +94,7 @@ export interface NotionOrder {
 }
 
 export async function getRecentOrders(limit = 20): Promise<NotionOrder[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const notion = getNotionClient() as any
   const dbId = process.env.NOTION_ORDERS_DB_ID
   if (!dbId) return []
@@ -103,6 +106,7 @@ export async function getRecentOrders(limit = 20): Promise<NotionOrder[]> {
       page_size: limit,
     })
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return response.results.map((page: any) => {
       const props = page.properties
       return {
@@ -127,6 +131,7 @@ export async function getOrdersByPage(
   pageSize = 20,
   cursor?: string,
 ): Promise<{ orders: NotionOrder[]; nextCursor: string | null }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const notion = getNotionClient() as any
   const dbId = process.env.NOTION_ORDERS_DB_ID
   if (!dbId) return { orders: [], nextCursor: null }

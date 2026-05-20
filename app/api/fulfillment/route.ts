@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { PRODUCT_CATALOG, INTAKE_SLUGS, ProductSlug } from '@/lib/products/catalog'
+import { PRODUCT_CATALOG, ProductSlug } from '@/lib/products/catalog'
 import { generatePresignedUrls } from '@/lib/r2/presign'
 import { uploadToR2 } from '@/lib/r2/upload'
 import { logOrder, updateOrderStatus } from '@/lib/notion/orders'
