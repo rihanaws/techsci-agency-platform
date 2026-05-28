@@ -16,7 +16,7 @@ export default function WelcomeEmail({ customerName, communityUrl }: WelcomeEmai
           <Text style={brand}>Rihan Consulting</Text>
           <Text style={h1}>Welcome to Autonomous Founder Systems!</Text>
           <Text style={text}>Hi {customerName},</Text>
-          <Text style={text}>You're in. Welcome to a private network of founders building with AI, automation, and zero-human systems.</Text>
+          <Text style={text}>You&apos;re in. Welcome to a private network of founders building with AI, automation, and zero-human systems.</Text>
           <Text style={listItem}>→ Access the community via the button below</Text>
           <Text style={listItem}>→ Introduce yourself in #introductions</Text>
           <Text style={listItem}>→ New content drops every Monday</Text>

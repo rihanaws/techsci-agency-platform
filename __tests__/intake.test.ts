@@ -17,7 +17,10 @@ vi.mock('@prisma/client', () => {
       }),
     },
   }
-  return { PrismaClient: vi.fn(() => prisma) }
+  class PrismaClient {
+    whopIntakeToken = prisma.whopIntakeToken
+  }
+  return { PrismaClient }
 })
 
 describe('Intake tokens', () => {
