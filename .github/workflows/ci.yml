@@ -6,49 +6,32 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read
-
 jobs:
   validate:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Cache Bun Dependencies
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Generate Prisma Client
-        run: bunx prisma generate
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
         env:
           NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
-
-      - name: Run Linting Checks
-        run: bun run lint
-
-      - name: Run Unit Tests
-        run: bun run test
-
-      - name: Verify Build
-        run: bun run build
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run build
         env:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          INTERNAL_WEBHOOK_SECRET: ${{ secrets.INTERNAL_WEBHOOK_SECRET }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_ORDERS_DB_ID: ${{ secrets.NOTION_ORDERS_DB_ID }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -57,6 +40,7 @@ jobs:
           CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DOPPIO_API_KEY: ${{ secrets.DOPPIO_API_KEY }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
