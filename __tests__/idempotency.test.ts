@@ -14,7 +14,10 @@ vi.mock('@prisma/client', () => {
       }),
     },
   }
-  return { PrismaClient: vi.fn(() => prisma) }
+  class PrismaClient {
+    whopProcessedEvent = prisma.whopProcessedEvent
+  }
+  return { PrismaClient }
 })
 
 describe('Idempotency', () => {

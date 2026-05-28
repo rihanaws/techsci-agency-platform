@@ -1,89 +1,87 @@
 # Customer Intake Flow
 
-This document details the lifecycle of customer intake tokens, validation logic, and the user interface for product questionnaires.
+Intake products use single-use tokens stored in Postgres and verified before rendering `app/intake/[token]`.
 
 ---
 
-## 🔑 Intake Token Lifecycle
+## Token model
 
-For high-ticket automated digital products (such as security assessments or software specifications), the platform requires inputs from the customer. 
+Source: `prisma/schema.prisma`
 
-The intake process is governed by secure, single-use UUID tokens managed in [lib/intake/tokens.ts](file:///Users/rihan/all-coding-project/techsci-agency-platform/lib/intake/tokens.ts).
-
-### 1. Database Model (`prisma/schema.prisma`)
-Intake tokens are stored in the database with their associated purchase metadata and a strict expiration date:
 ```prisma
 model WhopIntakeToken {
-  token         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  eventId       String   @unique @map("event_id")
-  productSlug   String   @map("product_slug")
-  customerEmail String   @map("customer_email")
-  customerName  String   @map("customer_name")
-  isUsed        Boolean  @default(false) @map("is_used")
-  expiresAt     DateTime @map("expires_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@map("whop_intake_tokens")
+  id            String    @id @default(cuid())
+  token         String    @unique @default(uuid())
+  eventId       String    @unique
+  productSlug   String
+  customerEmail String
+  customerName  String
+  usedAt        DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
 }
 ```
 
-### 2. Creation Flow
-When an intake product is purchased:
-1. The webhook handler triggers `generateIntakeToken()`.
-2. A random UUID is generated.
-3. The record is stored with `expiresAt` set to **7 days** from creation.
-4. The token UUID is embedded in the onboarding link sent to the user:
-   `https://agency.rihan.cloud/intake/f81d4fae-7dec-11d0-a765-00a0c91e6bf6`
+Rules:
 
-### 3. Expiration & Single-Use Rules
-Tokens are checked against two conditions before rendering the questionnaire:
-- **`isUsed`**: If the token has already been submitted, it is blocked.
-- **`expiresAt`**: If the current date is past `expiresAt`, it is blocked.
-
-When the customer submits the questionnaire form:
-- The token state `isUsed` is flipped to `true`.
-- The questionnaire payload is processed.
-- The token cannot be reused or accessed again.
+- **TTL**: 7 days from creation
+- **Single use**: `usedAt` set on successful submit
+- **Expired**: `expiresAt < now` → blocked
 
 ---
 
-## 🖥️ Dynamic Questionnaire Form UI
+## Creation flow
 
-The questionnaire is rendered by a hybrid Server/Client component structure at `app/intake/[token]`:
-- **Server Wrapper (`page.tsx`)**: Fetches token details, validates status, and handles errors. If valid, it passes configuration down to the client.
-- **Client Form (`IntakeForm.tsx`)**: Renders custom Tailwind inputs based on the `productSlug`.
-
-### Dynamic Field Rendering
-The form renders fields specifically tailored to the purchased product slug:
-
-#### Infrastructure Audit (`infra-audit`)
-- **AWS Account ID**: 12-digit AWS ID.
-- **Primary AWS Region**: Dropdown select.
-- **Core Workloads**: Textarea details (EC2, ECS, Lambda, EKS, RDS).
-- **Current Security Concerns**: Optional security bottlenecks.
-
-#### Automation Specification Document (`automation-spec-doc`)
-- **Source Application**: e.g., Whop, Stripe, Typeform.
-- **Target Application**: e.g., Notion, ActiveCampaign, Telegram.
-- **Trigger Condition**: e.g., payment succeeded, form submitted.
-- **Expected Actions**: Specific mapping request details.
-
-#### Managed DevOps (`managed-devops`)
-- **Git Provider**: GitHub, GitLab, or Bitbucket.
-- **Preferred Cloud Platform**: AWS, GCP, Azure, or Cloudflare.
-- **Team Size**: Number of active developers.
-- **Infrastructure Goals**: Core migration/modernization objectives.
+1. Whop webhook identifies intake product.
+2. `generateIntakeToken()` creates UUID token.
+3. Token stored with `expiresAt`.
+4. Email link: `https://agency.rihan.cloud/intake/{token}`.
 
 ---
 
-## 📤 Submission & Forwarding (`/api/intake/submit`)
+## Intake UI
 
-When a user submits their inputs, the client posts the data to [app/api/intake/submit/route.ts](file:///Users/rihan/all-coding-project/techsci-agency-platform/app/api/intake/submit/route.ts).
+Server page: `app/intake/[token]/page.tsx`  
+Client form: `app/intake/[token]/IntakeForm.tsx`
 
-### Process Flow
-1. Next.js validates the input payload using Zod.
-2. It fetches the token from the database.
-3. If valid, it updates the token status: `isUsed = true`.
-4. It compiles a payload merging the **Customer Profile** + **Product Details** + **Form Inputs**.
-5. It forwards the payload to **Make.com Scenario A2** (Intake Form Submission Webhook) for queue orchestration.
-6. Make.com calls back to the platform's `/api/fulfillment` endpoint to start the automated build.
+### `infra-audit`
+
+- Server Type (VPS / managed / serverless / bare metal)
+- Cloud Provider
+- OS & version
+- Running services
+- Cloudflare usage
+- SSL provider
+- Monitoring stack
+- Biggest concern
+- Notes (optional)
+
+### `automation-spec-doc`
+
+- Process name
+- Manual steps
+- Tools involved
+- Trigger type
+- Expected volume
+- Output type
+- Notes (optional)
+
+### `managed-devops`
+
+- Server endpoints
+- UptimeRobot API key (optional)
+- Better Stack API key (optional)
+- Alert email
+- SSL domains
+- Special instructions (optional)
+
+---
+
+## Submission flow
+
+Endpoint: `app/api/intake/submit/route.ts`
+
+1. Zod validates payload.
+2. Token validated via `validateIntakeToken()`.
+3. Make.com Scenario A2 receives payload.
+4. Token marked used via `markTokenUsed()`.

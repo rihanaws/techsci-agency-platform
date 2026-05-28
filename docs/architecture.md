@@ -1,71 +1,77 @@
 # System Architecture
 
-The TechSci Agency Platform is designed to operate fully autonomously. It functions as a secure integration middleware bridge connecting commerce channels (Whop), backend database engines (Prisma on Neon), operations tracking boards (Notion), AI models (Claude Sonnet), PDF generation microservices (Doppio), object storage (Cloudflare R2), and notification dispatches (Resend & Telegram).
+Autonomous Agency Platform runs two surfaces: public marketing site + fulfillment backend. All orchestration happens in Make.com, storage in R2, ops tracking in Notion.
 
 ---
 
-## 🛠️ Pipeline Flow Diagram
+## Public marketing site
+
+Static App Router pages (Server Components by default):
+
+- `/` landing
+- `/products` catalog (client filter)
+- `/products/[slug]` product detail (SSG)
+- `/pricing`, `/about`, `/legal/privacy`, `/legal/terms`
+- `robots.txt` + `sitemap.xml`
+
+Catalog source of truth: `lib/marketing/products.ts`.
+
+---
+
+## Fulfillment flow (Whop → Make → AI → R2 → Email)
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor Customer
-    participant Whop as Whop Commerce
-    participant App as Next.js Platform
-    participant DB as Prisma (Neon DB)
-    participant Notion as Notion Orders DB
-    participant Make as Make.com (eu1)
-    participant AI as Claude (Anthropic)
-    participant Doppio as Doppio PDF
-    participant R2 as Cloudflare R2
-    participant Resend as Resend (Email)
-    participant Telegram as Telegram (Owner)
+  autonumber
+  actor Customer
+  participant Whop
+  participant App as Next.js API
+  participant DB as Prisma (Neon)
+  participant Make as Make.com (eu1)
+  participant AI as Claude (Anthropic)
+  participant Doppio
+  participant R2
+  participant Resend
+  participant Notion
+  participant Telegram
 
-    Customer->>Whop: Purchase Product
-    Whop->>App: POST /api/whop/webhook (Signed Payload)
-    Note over App: 1. Verify HMAC Signature<br/>2. Validate Event JSON (Zod)<br/>3. Check Idempotency (Prisma)
-    App->>DB: Check & Insert Processed Event ID
-    Note over App: If Already Processed, exit 200
+  Customer->>Whop: Purchase
+  Whop->>App: POST /api/whop/webhook (HMAC)
+  App->>DB: Idempotency check + mark processed
+  App->>Make: Scenario A / D forward
 
-    alt ZIP Digital Product (e.g. AI Agent Pack)
-        App->>Make: Forward Event to Scenario A
-        Make->>App: POST /api/fulfillment (type: 'zip')
-        App->>Notion: Log Order (status: 'fulfilled')
-        App->>R2: Generate 48h Presigned Download Link
-        App->>Resend: Dispatch Download Email
-        App->>Telegram: Send Delivery Notification
-    else Intake-Based Service (e.g. Infrastructure Audit)
-        App->>DB: Generate Intake Token (7-day TTL)
-        App->>Notion: Log Order (status: 'awaiting_intake')
-        App->>Make: Forward Event to Scenario A (with token)
-        Make->>Resend: Email Intake Form Link
-        Customer->>App: GET /intake/{token} (Form Page)
-        Customer->>App: Submit Questionnaire Form
-        App->>DB: Mark Token as Used / Expired
-        App->>Make: Forward Form Data to Scenario A2
-        Make->>App: POST /api/fulfillment (type: 'intake')
-        App->>AI: Generate Audit/Spec JSON (Claude)
-        App->>Doppio: Render PDF from Custom HTML Template
-        App->>R2: Upload PDF Buffer to Bucket
-        App->>Notion: Update Order (status: 'fulfilled')
-        App->>Resend: Dispatch Report Delivery Email (48h PDF link)
-        App->>Telegram: Send Fulfillment Notification
-    end
+  alt ZIP or Bundle
+    Make->>App: POST /api/fulfillment (type: zip)
+    App->>R2: Presign download URLs
+    App->>Resend: Send delivery email
+    App->>Notion: Log order (fulfilled)
+  else Intake
+    App->>DB: Create intake token (7 days)
+    Make->>Resend: Send intake link
+    Customer->>App: GET /intake/[token]
+    Customer->>App: POST /api/intake/submit
+    App->>Make: Scenario A2
+    Make->>App: POST /api/fulfillment (type: intake)
+    App->>AI: Generate JSON report/spec
+    App->>Doppio: HTML → PDF
+    App->>R2: Upload + presign
+    App->>Resend: Send report
+    App->>Notion: Update status
+  end
+
+  App->>Telegram: Owner notifications
 ```
 
 ---
 
-## 🌐 API Route Specifications
+## API routes
 
-All internal fulfillment and utility endpoints are guarded by a shared secure credential token key passed via the `x-internal-api-key` header.
-
-| Endpoint | Method | Authentication | Purpose |
-| :--- | :--- | :--- | :--- |
-| `/api/whop/webhook` | `POST` | Whop HMAC Header | Primary webhook listener for Whop memberships and payment events. |
-| `/api/intake/submit` | `POST` | None (Token Validated) | Receives customer intake form submissions, marks the token as used, and forwards payloads. |
-| `/api/intake/create` | `POST` | `x-internal-api-key` | Programmatic creation of custom intake tokens (for manual overrides). |
-| `/api/fulfillment` | `POST` | `x-internal-api-key` | Core fulfillment engine orchestrating Claude, Doppio, R2, Notion, and email dispatches. |
-| `/api/r2/presign` | `POST` | `x-internal-api-key` | Generates 48-hour secure pre-signed download URLs for specific R2 object keys. |
-| `/api/campaign/trigger` | `POST` | User Session (Admin Only) | Server action gateway triggering Make.com Scenario F campaigns. |
-| `/api/health` | `GET` | None | System status and database latency checker. |
-```
+| Endpoint | Method | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/api/whop/webhook` | POST | Whop HMAC | Primary webhook entry |
+| `/api/intake/submit` | POST | Token validated | Intake form submission |
+| `/api/intake/create` | POST | `x-internal-api-key` | Internal token creation |
+| `/api/fulfillment` | POST | `x-internal-api-key` | ZIP + intake fulfillment |
+| `/api/r2/presign` | POST | `x-internal-api-key` | 48h download URL |
+| `/api/campaign/trigger` | POST | `x-internal-api-key` | Make.com Scenario F |
+| `/api/health` | GET | None | Liveness check |
