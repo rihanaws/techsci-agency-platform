@@ -64,6 +64,14 @@ sequenceDiagram
 
 ---
 
+## Reliability notes
+
+- Whop idempotency marking is concurrency-safe (duplicate inserts ignored).
+- Intake Notion logging is best-effort and does not block webhook response.
+- Make forwards time out after 10s to avoid hanging requests.
+
+---
+
 ## API routes
 
 | Endpoint | Method | Auth | Purpose |

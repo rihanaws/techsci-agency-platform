@@ -37,6 +37,8 @@ Rules:
 3. Token stored with `expiresAt`.
 4. Email link: `https://agency.rihan.cloud/intake/{token}`.
 
+On DB failure, `generateIntakeToken()` throws `IntakeTokenError` and webhook returns `500` so Whop retries.
+
 ---
 
 ## Intake UI
@@ -83,5 +85,5 @@ Endpoint: `app/api/intake/submit/route.ts`
 
 1. Zod validates payload.
 2. Token validated via `validateIntakeToken()`.
-3. Make.com Scenario A2 receives payload.
-4. Token marked used via `markTokenUsed()`.
+3. Make.com Scenario A2 receives payload (bounded retry with backoff on failure).
+4. Token marked used via `markTokenUsed()` only after successful forward.

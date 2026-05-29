@@ -30,6 +30,17 @@ Zero-human digital product fulfillment platform for Rihan Consulting (TechSci In
 
 ---
 
+## Operational notes
+
+- **Prisma**: `NEON_DATABASE_URL` must be set for migrations (`.env` or `.env.local`).
+- **Whop webhook**: HMAC header normalized (trim + case-insensitive `sha256=`). Validation logs are sanitized (path + code only).
+- **Idempotency**: duplicate `event_id` inserts are concurrency-safe.
+- **Intake submit**: Make A2 forward retries with bounded backoff before failing.
+- **Make forward**: 10s timeout via `AbortController` with proper cleanup.
+- **R2 presign**: requires `INTERNAL_API_KEY`; missing env returns 500. Bucket env validated at call time.
+
+---
+
 ## Key paths
 
 ```text

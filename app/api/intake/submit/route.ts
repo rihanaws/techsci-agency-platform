@@ -38,7 +38,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'misconfigured' }, { status: 500 })
   }
 
-  const payload = {
+  const payload: IntakeForwardPayload = {
     source: 'agency-intake',
     productSlug: record.productSlug,
     eventId: record.eventId,
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     formData,
   }
 
-  const forwarded = await forwardToMake(payload, makeUrl)
+  const forwarded = await forwardToMakeWithRetry(payload, makeUrl)
   if (!forwarded) {
     await notifyOwner(`⚠️ Make A2 forward failed for intake token ${token}`)
     return NextResponse.json({ error: 'upstream_failed' }, { status: 500 })
@@ -56,4 +56,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   await markTokenUsed(token)
 
   return NextResponse.json({ success: true })
+}
+
+type IntakeForwardPayload = {
+  source: 'agency-intake'
+  productSlug: string
+  eventId: string
+  customerEmail: string
+  customerName: string
+  formData: Record<string, unknown>
+}
+
+async function forwardToMakeWithRetry(
+  payload: IntakeForwardPayload,
+  makeUrl: string,
+): Promise<boolean> {
+  const delaysMs = [250, 500, 1000]
+
+  for (let attempt = 0; attempt <= delaysMs.length; attempt += 1) {
+    const ok = await forwardToMake(payload, makeUrl)
+    if (ok) return true
+    const delayMs = delaysMs[attempt]
+    if (delayMs) await wait(delayMs)
+  }
+
+  return false
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }

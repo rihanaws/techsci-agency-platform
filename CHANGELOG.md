@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented here.
 
+## 2026-05-29
+
+### Fixed
+- Concurrency-safe idempotency marking for Whop events.
+- Intake token create now throws a domain error on DB failure.
+- R2 presign validates bucket env and returns clearer misconfig errors.
+- Make forward timeout uses AbortController with cleanup.
+- Whop signature parsing normalizes header input.
+- Webhook validation logs sanitized (no raw payload detail).
+- Intake Make A2 forward retries with bounded backoff.
+- Presign API returns 500 when internal API key is missing.
+- Notion intake logging moved off critical webhook path with failure notification.
+
 ## 2026-05-28
 
 ### Added

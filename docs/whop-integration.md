@@ -14,6 +14,9 @@ Headers accepted:
 - `whop-signature`
 
 Signature format: `sha256=<hex>` or raw hex.
+Header is trimmed and `sha256=` prefix is matched case-insensitively.
+
+Validation logs are sanitized (path + error code only).
 
 ---
 
@@ -37,6 +40,8 @@ Flow:
 1. `isEventProcessed(event_id)`
 2. If duplicate → return `{ received: true, duplicate: true }`
 3. On success → `markEventProcessed(...)`
+
+`markEventProcessed` ignores unique-constraint collisions so concurrent duplicates do not crash webhook.
 
 ---
 
@@ -73,3 +78,10 @@ Source: `app/api/whop/webhook/route.ts`
 - One-time + intake → Scenario A
 
 If Make forward fails, webhook returns `500` so Whop retries.
+Forward uses a 10s timeout and cleans up abort timers.
+
+---
+
+## Intake order logging (Notion)
+
+Intake orders are logged to Notion in a best-effort, non-blocking path. Failures are owner-notified and do not block webhook response.

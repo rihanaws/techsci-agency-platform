@@ -13,6 +13,9 @@ export async function forwardToMake(
     return false
   }
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
   try {
     const res = await fetch(targetUrl, {
       method: 'POST',
@@ -21,7 +24,7 @@ export async function forwardToMake(
         'X-Internal-Webhook-Secret': internalSecret,
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10_000),
+      signal: controller.signal,
     })
 
     if (!res.ok) {
@@ -33,5 +36,7 @@ export async function forwardToMake(
   } catch (err) {
     console.error('[make/forward] fetch threw', { error: (err as Error).message, targetUrl })
     return false
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

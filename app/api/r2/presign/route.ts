@@ -13,7 +13,12 @@ const TTL_MS = 48 * 60 * 60 * 1000 // 48h in ms
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Internal-only: require API key
-  if (req.headers.get('x-internal-api-key') !== process.env.INTERNAL_API_KEY) {
+  const internalApiKey = process.env.INTERNAL_API_KEY
+  if (!internalApiKey) {
+    console.error('[r2/presign] INTERNAL_API_KEY not set')
+    return NextResponse.json({ error: 'misconfigured' }, { status: 500 })
+  }
+  if (req.headers.get('x-internal-api-key') !== internalApiKey) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
