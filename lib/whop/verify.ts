@@ -12,9 +12,12 @@ export function verifyWhopSignature(
 ): boolean {
   if (!signatureHeader || !secret) return false
 
-  const receivedHex = signatureHeader.startsWith('sha256=')
-    ? signatureHeader.slice(7)
-    : signatureHeader
+  const normalized = signatureHeader.trim()
+  if (!normalized) return false
+  const normalizedLower = normalized.toLowerCase()
+  const receivedHex = normalizedLower.startsWith('sha256=')
+    ? normalized.slice(7)
+    : normalized
 
   const expectedHex = createHmac('sha256', secret)
     .update(rawBody, 'utf8')

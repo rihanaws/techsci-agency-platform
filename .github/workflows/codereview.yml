@@ -1,0 +1,30 @@
+name: Code Review & Quality Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify Formatting (Prettier)
+        run: bunx prettier --check "app/**/*.{ts,tsx,css}" "lib/**/*.ts" "types/**/*.ts"
+
+      - name: Security Vulnerability Scan
+        run: bun pm audit

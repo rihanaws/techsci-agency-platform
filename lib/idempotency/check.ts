@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
@@ -17,7 +17,21 @@ export async function markEventProcessed(
   productSlug: string,
   customerEmail: string,
 ): Promise<void> {
-  await prisma.whopProcessedEvent.create({
-    data: { eventId, productSlug, customerEmail },
-  })
+  try {
+    await prisma.whopProcessedEvent.create({
+      data: { eventId, productSlug, customerEmail },
+    })
+  } catch (err) {
+    if (err instanceof Error && isUniqueConstraintError(err)) return
+    throw err
+  }
+}
+
+function isUniqueConstraintError(
+  err: Error,
+): err is Prisma.PrismaClientKnownRequestError {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === 'P2002'
+  )
 }

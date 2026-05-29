@@ -39,7 +39,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!parsed.success) {
-    console.error('[whop-webhook] Zod validation failed', parsed.error.flatten())
+    const issueSummary = parsed.error.issues.map((issue) => ({
+      path: issue.path.join('.'),
+      code: issue.code,
+    }))
+    console.error('[whop-webhook] Zod validation failed', { issues: issueSummary })
     return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
   }
 
@@ -57,7 +61,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // 6. Normalize
-  const purchase = normalizeWhopEvent(event)
+  let purchase = normalizeWhopEvent(event)
 
   // 7. Generate intake token for intake products
   if (INTAKE_SLUGS.has(purchase.productSlug as ProductSlug)) {
@@ -68,11 +72,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         customerEmail: purchase.customerEmail,
         customerName: purchase.customerName,
       })
-      purchase.intakeToken = token
+      purchase = { ...purchase, intakeToken: token }
 
-      // Log initial intake order in Notion
-      const { logOrder } = await import('@/lib/notion/orders')
-      await logOrder({
+      // Best-effort Notion log; do not block webhook response.
+      void logIntakeOrderSafely({
         eventId: purchase.eventId,
         productSlug: purchase.productSlug,
         customerEmail: purchase.customerEmail,
@@ -83,8 +86,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         createdAt: purchase.createdAt,
       })
     } catch (err) {
-      console.error('[whop-webhook] Failed to generate intake token or log order', err)
-      await notifyOwner(`⚠️ Intake token generation or Notion logging failed for event ${purchase.eventId}`)
+      console.error('[whop-webhook] Failed to generate intake token', err)
+      await notifyOwner(`⚠️ Intake token generation failed for event ${purchase.eventId}`)
       return NextResponse.json({ error: 'token_generation_failed' }, { status: 500 })
     }
   }
@@ -131,6 +134,25 @@ function resolveMakeUrl(slug: string, isSubscription: boolean): string | null {
   }
   // All one-time purchases (including intake) → Scenario A
   return process.env.MAKE_WEBHOOK_URL_SCENARIO_A ?? null
+}
+
+async function logIntakeOrderSafely(order: {
+  eventId: string
+  productSlug: string
+  customerEmail: string
+  customerName: string
+  amount: number
+  currency: string
+  status: 'awaiting_intake'
+  createdAt: string
+}): Promise<void> {
+  try {
+    const { logOrder } = await import('@/lib/notion/orders')
+    await logOrder(order)
+  } catch (err) {
+    console.error('[whop-webhook] Notion log failed', err)
+    await notifyOwner(`⚠️ Notion logging failed for event ${order.eventId}`)
+  }
 }
 
 export function GET(): NextResponse {

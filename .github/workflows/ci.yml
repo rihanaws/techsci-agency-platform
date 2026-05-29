@@ -1,0 +1,49 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run build
+        env:
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          INTERNAL_WEBHOOK_SECRET: ${{ secrets.INTERNAL_WEBHOOK_SECRET }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_ORDERS_DB_ID: ${{ secrets.NOTION_ORDERS_DB_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DOPPIO_API_KEY: ${{ secrets.DOPPIO_API_KEY }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}

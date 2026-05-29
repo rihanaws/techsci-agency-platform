@@ -7,6 +7,17 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 const TOKEN_TTL_DAYS = 7
 
+export class IntakeTokenError extends Error {
+  public override cause?: Error
+  public readonly code = 'INTAKE_TOKEN_CREATE_FAILED' as const
+
+  constructor(cause?: Error) {
+    super('INTAKE_TOKEN_CREATE_FAILED')
+    this.name = 'IntakeTokenError'
+    this.cause = cause
+  }
+}
+
 export async function generateIntakeToken(params: {
   eventId: string
   productSlug: string
@@ -16,9 +27,13 @@ export async function generateIntakeToken(params: {
   const token = randomUUID()
   const expiresAt = new Date(Date.now() + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000)
 
-  await prisma.whopIntakeToken.create({
-    data: { token, expiresAt, ...params },
-  })
+  try {
+    await prisma.whopIntakeToken.create({
+      data: { token, expiresAt, ...params },
+    })
+  } catch (err) {
+    throw new IntakeTokenError(err instanceof Error ? err : undefined)
+  }
 
   return token
 }
